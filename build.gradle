@@ -107,20 +107,8 @@ android {
 		versionName computeVersionName()
 	}
 
-	// http://stackoverflow.com/a/19130098
-	signingConfigs {
-		release {
-			storeFile file(System.getenv("KEYSTORE"))
-			storePassword ''
-			keyAlias System.getenv("KEYALIAS")
-			keyPassword ''
-		}
-	}
-
 	buildTypes {
 		release {
-			signingConfig android.signingConfigs.release
-			// http://stackoverflow.com/a/24650026
 			applicationVariants.all { variant ->
 				variant.outputs.each { output ->
 					output.outputFile = new File(output.outputFile.parent,

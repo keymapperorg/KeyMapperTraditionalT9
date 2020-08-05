@@ -1,6 +1,9 @@
 package org.nyanya.android.traditionalt9;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.KeyboardView;
@@ -90,9 +93,105 @@ public class TraditionalT9 extends InputMethodService implements
 	private static final int[] MODE_CYCLE = { MODE_LANG, MODE_TEXT, MODE_NUM };
 	private int mKeyMode;
 
+	//DON'T CHANGE THESE!!!
+	private static final String KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN_UP = "io.github.sds100.keymapper.inputmethod.ACTION_INPUT_DOWN_UP";
+	private static final String KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN = "io.github.sds100.keymapper.inputmethod.ACTION_INPUT_DOWN";
+	private static final String KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_UP = "io.github.sds100.keymapper.inputmethod.ACTION_INPUT_UP";
+	private static final String KEY_MAPPER_INPUT_METHOD_ACTION_TEXT = "io.github.sds100.keymapper.inputmethod.ACTION_INPUT_TEXT";
+
+	private static final String KEY_MAPPER_INPUT_METHOD_EXTRA_KEYCODE = "io.github.sds100.keymapper.inputmethod.EXTRA_KEYCODE";
+	private static final String KEY_MAPPER_INPUT_METHOD_EXTRA_METASTATE = "io.github.sds100.keymapper.inputmethod.EXTRA_METASTATE";
+	private static final String KEY_MAPPER_INPUT_METHOD_EXTRA_TEXT = "io.github.sds100.keymapper.inputmethod.EXTRA_TEXT";
+
 	private InputConnection currentInputConnection = null;
 
 	private Toast modeNotification = null;
+
+	final static class KeyMapperBroadcastReceiver extends BroadcastReceiver {
+		private final InputMethodService mIms;
+
+		public KeyMapperBroadcastReceiver(InputMethodService ims) {
+			mIms = ims;
+		}
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			final String action = intent.getAction();
+
+			assert action != null;
+
+			if (TraditionalT9.KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN_UP.equals(action)) {
+				int keyCode = getKeyCode(intent);
+				if (keyCode == -1) return;
+
+				long eventTime = SystemClock.uptimeMillis();
+
+				KeyEvent downEvent = new KeyEvent(eventTime, eventTime,
+						KeyEvent.ACTION_DOWN, keyCode, 0, getMetaState(intent));
+
+				InputConnection ic = mIms.getCurrentInputConnection();
+
+				if (ic != null) {
+					ic.sendKeyEvent(downEvent);
+				}
+
+				KeyEvent upEvent = new KeyEvent(eventTime, SystemClock.uptimeMillis(),
+						KeyEvent.ACTION_UP, keyCode, 0);
+
+				if (ic != null) {
+					ic.sendKeyEvent(upEvent);
+				}
+			} else if (TraditionalT9.KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN.equals(action)) {
+				int keyCode = getKeyCode(intent);
+				if (keyCode == -1) return;
+
+				long eventTime = SystemClock.uptimeMillis();
+
+				KeyEvent downEvent = new KeyEvent(eventTime, eventTime,
+						KeyEvent.ACTION_DOWN, keyCode, 0, getMetaState(intent));
+
+				InputConnection ic = mIms.getCurrentInputConnection();
+
+				if (ic != null) {
+					ic.sendKeyEvent(downEvent);
+				}
+			} else if (TraditionalT9.KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_UP.equals(action)) {
+				int keyCode = getKeyCode(intent);
+				if (keyCode == -1) return;
+
+				long eventTime = SystemClock.uptimeMillis();
+
+				KeyEvent upEvent = new KeyEvent(eventTime, SystemClock.uptimeMillis(),
+						KeyEvent.ACTION_UP, keyCode, 0);
+
+				InputConnection ic = mIms.getCurrentInputConnection();
+
+				if (ic != null) {
+					ic.sendKeyEvent(upEvent);
+				}
+			} else if (TraditionalT9.KEY_MAPPER_INPUT_METHOD_ACTION_TEXT.equals(action)) {
+				String text = intent.getStringExtra(KEY_MAPPER_INPUT_METHOD_EXTRA_TEXT);
+
+				if (text == null) return;
+
+				InputConnection ic = mIms.getCurrentInputConnection();
+
+				if (ic != null) {
+					ic.commitText(text, 1);
+				}
+			}
+		}
+
+		private int getKeyCode(Intent intent) {
+			return intent.getIntExtra(KEY_MAPPER_INPUT_METHOD_EXTRA_KEYCODE, -1);
+		}
+
+		private int getMetaState(Intent intent) {
+			return intent.getIntExtra(KEY_MAPPER_INPUT_METHOD_EXTRA_METASTATE, 0);
+		}
+	}
+
+	final KeyMapperBroadcastReceiver mKeyMapperBroadcastReceiver = new KeyMapperBroadcastReceiver(this);
 
 	/**
 	 * Main initialization of the input method component. Be sure to call to
@@ -109,6 +208,14 @@ public class TraditionalT9 extends InputMethodService implements
 			interfacehandler = new InterfaceHandler(getLayoutInflater().inflate(R.layout.mainview,
 					null), this);
 		}
+
+		final IntentFilter keyMapperIntentFilter = new IntentFilter();
+		keyMapperIntentFilter.addAction(KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN_UP);
+		keyMapperIntentFilter.addAction(KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_DOWN);
+		keyMapperIntentFilter.addAction(KEY_MAPPER_INPUT_METHOD_ACTION_INPUT_UP);
+		keyMapperIntentFilter.addAction(KEY_MAPPER_INPUT_METHOD_ACTION_TEXT);
+
+		registerReceiver(mKeyMapperBroadcastReceiver, keyMapperIntentFilter);
 	}
 
 	@Override
